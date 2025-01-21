@@ -34,4 +34,16 @@ CREATE TABLE IF NOT EXISTS track(
 	album_id INTEGER NOT NULL REFERENCES album(id)
 );
 
-alter table track add check (duration <= 240);
+ALTER TABLE track ADD CHECK (duration <= 240);
+
+CREATE TABLE IF NOT EXISTS collection(
+	id SERIAL PRIMARY KEY,
+	name VARCHAR(250) NOT NULL,
+	year_of_issue INTEGER NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS collections_tracks (
+	track_id INTEGER REFERENCES track(id),
+	collection_id INTEGER REFERENCES collection(id),
+	CONSTRAINT pk PRIMARY KEY (track_id, collection_id)
+);
