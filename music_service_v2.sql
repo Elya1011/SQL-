@@ -21,9 +21,9 @@ CREATE TABLE IF NOT EXISTS album (
 );
 
 CREATE TABLE IF NOT EXISTS singers_albums (
-	singer_id INTEGER REFERENCES singer(id),
+	singer2_id INTEGER REFERENCES singer(id),
 	album_id INTEGER REFERENCES album(id),
-	CONSTRAINT pk PRIMARY KEY (singer_id, album_id)
+	CONSTRAINT pk PRIMARY KEY (singer2_id, album_id)
 );
 
 
@@ -69,7 +69,7 @@ INSERT INTO track (name, duration, album_id) VALUES
 	('Аромат', 210, 5);
 
 INSERT INTO track (name, duration, album_id) VALUES
-	('Беги от меня', 198, 4)
+	('Беги от меня', 198, 4);
 
 INSERT INTO collection (name, year_of_issue) VALUES
 	('Золотая коллекция', 2021),
@@ -121,7 +121,7 @@ SELECT nickname FROM singer
 WHERE nickname NOT LIKE '% %'
 
 SELECT name FROM track t 
-WHERE name LIKE '% мой %'
+WHERE STRING_TO_ARRAY(LOWER(name), ' ') && ARRAY ['мой', 'my']
 
 SELECT genre_id, count(singer_id) FROM genres_singers gs
 GROUP BY genre_id
@@ -136,9 +136,12 @@ JOIN album a ON a.id = t.album_id
 GROUP BY a.id
 
 SELECT nickname FROM singer s 
-JOIN singers_albums sa ON sa.album_id = s.id 
-JOIN album a ON sa.singer_id = a.id
-WHERE year_of_issue != 2020
+WHERE nickname NOT IN (
+	SELECT nickname FROM singer s2 
+	JOIN singers_albums sa ON sa.album_id = s2.id 
+	JOIN album a ON sa.singer_id = a.id
+	WHERE year_of_issue = 2020
+);
 
 SELECT c."name" FROM collection c 
 JOIN collections_tracks ct ON ct.track_id = c.id
@@ -148,22 +151,30 @@ JOIN singers_albums sa ON sa.album_id = a.id
 JOIN singer s ON s.id = sa.singer_id
 WHERE nickname = 'Нервы'
 
-SELECT a.name FROM album a 
-JOIN singers_albums sa ON sa.album_id = a.id 
+SELECT DISTINCT a.name FROM album a 
+JOIN singers_albums sa ON sa.album_id = a.id
 JOIN genres_singers gs ON sa.singer_id = gs.singer_id
-GROUP BY a.name
-HAVING count(a.name) > 1
+GROUP BY a.name, sa.album_id, sa.singer_id
+HAVING count(sa.album_id) > 1 
 
 SELECT t.name FROM track t
 LEFT JOIN collections_tracks ct ON ct.track_id = t.id 
 WHERE ct.collection_id IS null
 
 SELECT s.nickname FROM singer s 
-JOIN singers_albums sa ON sa.singer_id = s.id 
-JOIN track t ON t.album_id = sa.album_id
-ORDER BY t.duration LIMIT 1
+JOIN singers_albums sa ON sa.singer_id = s.id
+JOIN album a ON a.id = sa.album_id 
+JOIN track t ON t.album_id = a.id 
+WHERE t.duration = (
+	SELECT min(duration) FROM track t2 
+	JOIN singers_albums sa2 ON t2.album_id = sa2.album_id
+);
 
-select a.name, count(t.album_id) from album a 
-join track t on t.album_id = a.id 
-group by a.name
-order by count(t.album_id) limit 1
+SELECT a.name FROM album a 
+JOIN track t ON t.album_id = a.id 
+GROUP BY a.id 
+HAVING count(t.id) = (
+	SELECT count(t2.id) FROM track t2
+	GROUP BY t2.album_id
+	ORDER BY 1 LIMIT 1
+); 
